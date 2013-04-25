@@ -1,0 +1,4 @@
+amqpc
+=====
+
+AMQP CLI tool
