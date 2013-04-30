@@ -17,7 +17,9 @@ const (
 	DEFAULT_ROUTING_KEY   string = "amqpc-key"
 	DEFAULT_CONSUMER_TAG  string = "amqpc-consumer"
 	DEFAULT_RELIABLE      bool   = true
-	DEFAULT_MESSAGE_COUNT int    = 30
+	DEFAULT_INTERVAL      int    = 500
+	DEFAULT_MESSAGE_COUNT int    = 0
+	DEFAULT_CONCURRENCY   int    = 1
 )
 
 var (
@@ -35,16 +37,17 @@ var (
 	// RabbitMQ related
 	uri          = flag.String("u", "amqp://guest:guest@localhost:5672/", "AMQP URI")
 	exchangeType = flag.String("t", DEFAULT_EXCHANGE_TYPE, "Exchange type - direct|fanout|topic|x-custom")
-	consumerTag  = flag.String("g", DEFAULT_CONSUMER_TAG, "AMQP consumer tag (should not be blank)")
+	consumerTag  = flag.String("ct", DEFAULT_CONSUMER_TAG, "AMQP consumer tag (should not be blank)")
 	reliable     = flag.Bool("r", DEFAULT_RELIABLE, "Wait for the publisher confirmation before exiting")
 
 	// Test bench related
-	interval     = flag.Int("i", 1000, "(Producer only) Interval at which send messages (in ms)")
+	interval     = flag.Int("i", DEFAULT_INTERVAL, "(Producer only) Interval at which send messages (in ms)")
 	messageCount = flag.Int("n", DEFAULT_MESSAGE_COUNT, "(Producer only) Number of messages to send")
+	concurrency  = flag.Int("g", DEFAULT_CONCURRENCY, "(Producer only) Concurrency")
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "amqpc is CLI tool for testing AMQP server\n")
+	fmt.Fprintf(os.Stderr, "amqpc is CLI tool for testing AMQP brokers\n")
 	fmt.Fprintf(os.Stderr, "Usage:\n")
 	fmt.Fprintf(os.Stderr, "  Consumer : amqpc [options] -c exchange routingkey queue\n")
 	fmt.Fprintf(os.Stderr, "  Producer : amqpc [options] -p exchange routingkey [message]\n")
@@ -64,7 +67,7 @@ func main() {
 	flag.Usage = usage
 	args := flag.Args()
 
-	if len(args) != 3 {
+	if flag.NArg() != 3 {
 		log.Printf("You're missing arguments")
 		os.Exit(1)
 	}
@@ -74,7 +77,9 @@ func main() {
 
 	if *producer {
 		body = &args[2]
-		go startProducer(done, body, *messageCount, *interval)
+		for i := 0; i < *concurrency; i++ {
+			go startProducer(done, body, *messageCount, *interval)
+		}
 	} else {
 		queue = &args[2]
 		go startConsumer(done)
@@ -124,7 +129,7 @@ func startProducer(done chan error, body *string, messageCount, interval int) {
 		publish(p, body, i)
 
 		i++
-		if i > messageCount {
+		if messageCount != 0 && i > messageCount {
 			break
 		}
 
