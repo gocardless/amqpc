@@ -41,9 +41,9 @@ var (
 	reliable     = flag.Bool("r", DEFAULT_RELIABLE, "Wait for the publisher confirmation before exiting")
 
 	// Test bench related
+	concurrency  = flag.Int("g", DEFAULT_CONCURRENCY, "Concurrency")
 	interval     = flag.Int("i", DEFAULT_INTERVAL, "(Producer only) Interval at which send messages (in ms)")
 	messageCount = flag.Int("n", DEFAULT_MESSAGE_COUNT, "(Producer only) Number of messages to send")
-	concurrency  = flag.Int("g", DEFAULT_CONCURRENCY, "(Producer only) Concurrency")
 )
 
 func usage() {
@@ -82,7 +82,9 @@ func main() {
 		}
 	} else {
 		queue = &args[2]
-		go startConsumer(done)
+		for i := 0; i < *concurrency; i++ {
+			go startConsumer(done)
+		}
 	}
 
 	err := <-done
