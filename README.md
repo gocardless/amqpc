@@ -2,7 +2,7 @@ amqpc
 =====
 
 amqpc is a tool to test your AMQP broker.  
-It has been developped and tested with RabbitMQ but any AMQP broker should work.  
+It has been developed and tested with RabbitMQ but any AMQP broker should work.  
 We put it together very quickly to benchmark and test our RabbitMQ HA Cluster, so it might be unstable.  
 
 ## Usage
