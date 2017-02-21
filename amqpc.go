@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"github.com/streadway/amqp"
 )
 
 const (
@@ -75,15 +76,21 @@ func main() {
 	exchange = &args[0]
 	routingKey = &args[1]
 
+	connection, _ := amqp.Dial(*uri)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("Dial: %s", err)
+	// }
+
 	if *producer {
 		body = &args[2]
 		for i := 0; i < *concurrency; i++ {
-			go startProducer(done, body, *messageCount, *interval)
+			go startProducer(i, connection, done, body, *messageCount, *interval)
 		}
 	} else {
 		queue = &args[2]
+
 		for i := 0; i < *concurrency; i++ {
-			go startConsumer(done)
+			go startConsumer(i, connection, done)
 		}
 	}
 
@@ -95,9 +102,10 @@ func main() {
 	log.Printf("Exiting...")
 }
 
-func startConsumer(done chan error) {
+func startConsumer(idx int, connection *amqp.Connection, done chan error) {
 	_, err := NewConsumer(
-		*uri,
+		idx,
+		connection,
 		*exchange,
 		*exchangeType,
 		*queue,
@@ -112,9 +120,10 @@ func startConsumer(done chan error) {
 	<-done
 }
 
-func startProducer(done chan error, body *string, messageCount, interval int) {
+func startProducer(idx int, connection *amqp.Connection, done chan error, body *string, messageCount, interval int) {
 	p, err := NewProducer(
-		*uri,
+		idx,
+		connection,
 		*exchange,
 		*exchangeType,
 		*routingKey,

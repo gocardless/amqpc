@@ -13,21 +13,15 @@ type Producer struct {
 	done       chan error
 }
 
-func NewProducer(amqpURI, exchange, exchangeType, key, ctag string, reliable bool) (*Producer, error) {
+func NewProducer(idx int, conn *amqp.Connection, exchange, exchangeType, key, ctag string, reliable bool) (*Producer, error) {
 	p := &Producer{
-		connection: nil,
+		connection: conn,
 		channel:    nil,
 		tag:        ctag,
 		done:       make(chan error),
 	}
 
 	var err error
-
-	log.Printf("Connecting to %s", amqpURI)
-	p.connection, err = amqp.Dial(amqpURI)
-	if err != nil {
-		return nil, fmt.Errorf("Dial: ", err)
-	}
 
 	log.Printf("Getting Channel ")
 	p.channel, err = p.connection.Channel()

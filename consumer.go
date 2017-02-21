@@ -13,9 +13,9 @@ type Consumer struct {
 	done       chan error
 }
 
-func NewConsumer(amqpURI, exchange, exchangeType, queue, key, ctag string) (*Consumer, error) {
+func NewConsumer(idx int, conn *amqp.Connection, exchange, exchangeType, queue, key, ctag string) (*Consumer, error) {
 	c := &Consumer{
-		connection: nil,
+		connection: conn,
 		channel:    nil,
 		tag:        ctag,
 		done:       make(chan error),
@@ -23,11 +23,11 @@ func NewConsumer(amqpURI, exchange, exchangeType, queue, key, ctag string) (*Con
 
 	var err error
 
-	log.Printf("Connecting to %s", amqpURI)
-	c.connection, err = amqp.Dial(amqpURI)
-	if err != nil {
-		return nil, fmt.Errorf("Dial: %s", err)
-	}
+//	log.Printf("Connecting to %s", amqpURI)
+//	c.connection, err = amqp.Dial(amqpURI)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("Dial: %s", err)
+	// }
 
 	log.Printf("Getting Channel")
 	c.channel, err = c.connection.Channel()
@@ -48,11 +48,11 @@ func NewConsumer(amqpURI, exchange, exchangeType, queue, key, ctag string) (*Con
 		return nil, fmt.Errorf("Exchange Declare: %s", err)
 	}
 
-	log.Printf("Declaring Queue (%s)", queue)
+	log.Printf("Declaring Queue (%s)", queue + fmt.Sprintf("%d",idx))
 	state, err := c.channel.QueueDeclare(
-		queue, // name of the queue
+		queue + fmt.Sprintf("%d",idx), // name of the queue
 		true,  // durable
-		false, // delete when usused
+		true,  // delete when usused
 		false, // exclusive
 		false, // noWait
 		nil,   // arguments
@@ -63,7 +63,7 @@ func NewConsumer(amqpURI, exchange, exchangeType, queue, key, ctag string) (*Con
 
 	log.Printf("Declared Queue (%d messages, %d consumers), binding to Exchange (key '%s')", state.Messages, state.Consumers, key)
 	if err = c.channel.QueueBind(
-		queue,    // name of the queue
+		queue + fmt.Sprintf("%d",idx),    // name of the queue
 		key,      // routingKey
 		exchange, // sourceExchange
 		false,    // noWait
@@ -74,7 +74,7 @@ func NewConsumer(amqpURI, exchange, exchangeType, queue, key, ctag string) (*Con
 
 	log.Printf("Queue bound to Exchange, starting Consume (consumer tag '%s')", c.tag)
 	deliveries, err := c.channel.Consume(
-		queue, // name
+		queue + fmt.Sprintf("%d",idx), // name
 		c.tag, // consumerTag,
 		true,  // autoAck
 		false, // exclusive
